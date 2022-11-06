@@ -26,27 +26,19 @@ class MoviesView(Resource):
 
         args = request.args.to_dict()
 
-        if not args:
-            all_movies = Movie.query.all()
-            return movies_schema.dump(all_movies), 200
+        movies = movies_schema.dump(Movie.query.all())
 
-        if len(args) == 1:
-            if director_id := args.get("director_id"):
-                movies = Movie.query.filter(Movie.director_id == director_id).all()
-                return movies_schema.dump(movies), 200
+        filter_list = ["director_id", "genre_id"]
 
-            if genre_id := args.get("genre_id"):
-                movies = Movie.query.filter(Movie.genre_id == genre_id).all()
-                return movies_schema.dump(movies), 200
+        for arg in args:
+            if arg in filter_list:
+                movies_filtered = [movie for movie in movies if str(movie.get(arg)) == args.get(arg)]
+                movies = movies_filtered
+            else:
+                return f"Не известный аргумент. Используйте для фильтрации аргументы из списка {filter_list}.", 404
 
-            return "Не известный аргумент. Используйте genre_id и/или director_id для фильтрации.", 404
+        return movies, 200
 
-        if len(args) == 2:
-            if "genre_id" in args and director_id in args:
-                movies = Movie.query.filter((Movie.genre_id == args.get("genre_id")) & (Movie.director_id == args.get("director_id"))).all()
-                return movies_schema.dump(movies), 200
-
-        return "Не известные аргументы. Используйте genre_id и/или director_id для фильтрации.", 404
 
     def post(self):
         """добавляет кино в фильмотеку"""
@@ -81,7 +73,6 @@ class MovieView(Resource):
         if not movie:
             return "Не найдено", 404
 
-        movie.id = req_json.get("id")
         movie.title = req_json.get("title")
         movie.description = req_json.get("description")
         movie.trailer = req_json.get("trailer")
@@ -148,7 +139,6 @@ class DirectorView(Resource):
         if not director:
             return "Не найдено", 404
 
-        director.id = req_json.get("id")
         director.name = req_json.get("name")
 
 
@@ -210,7 +200,6 @@ class GenreView(Resource):
         if not genre:
             return "Не найдено", 404
 
-        genre.id = req_json.get("id")
         genre.name = req_json.get("name")
 
         db.session.add(genre)
